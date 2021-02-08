@@ -45,8 +45,8 @@ THE SOFTWARE. */
       this.setPoster(options.poster);
       this.setSrc(this.options_.source, true);
 
-      // Set the vjs-youtube class to the player
-      // Parent is not set yet so we have to wait a tick
+      // Set the vjs-youtube class to the player.
+      // Parent is not set yet so we have to wait a tick.
       this.setTimeout(function() {
         if (this.el_) {
           this.el_.parentNode.className += ' vjs-youtube';
@@ -66,7 +66,7 @@ THE SOFTWARE. */
 
     dispose: function() {
       if (this.ytPlayer) {
-        //Dispose of the YouTube Player
+        //Dispose of the YouTube Player.
         if (this.ytPlayer.stopVideo) {
           this.ytPlayer.stopVideo();
         }
@@ -74,7 +74,7 @@ THE SOFTWARE. */
           this.ytPlayer.destroy();
         }
       } else {
-        //YouTube API hasn't finished loading or the player is already disposed
+        //YouTube API hasn't finished loading or the player is already disposed.
         var index = Youtube.apiReadyQueue.indexOf(this);
         if (index !== -1) {
           Youtube.apiReadyQueue.splice(index, 1);
@@ -87,7 +87,7 @@ THE SOFTWARE. */
         .replace(' vjs-youtube-mobile', '');
       this.el_.parentNode.removeChild(this.el_);
 
-      //Needs to be called after the YouTube player is destroyed, otherwise there will be a null reference exception
+      // This needs to be called after the YouTube player is destroyed, otherwise there will be a null reference exception.
       Tech.prototype.dispose.call(this);
     },
 
@@ -105,7 +105,7 @@ THE SOFTWARE. */
         divBlocker.setAttribute('class', 'vjs-iframe-blocker');
         divBlocker.setAttribute('style', 'position:absolute;top:0;left:0;width:100%;height:100%');
 
-        // In case the blocker is still there and we want to pause
+        // In case the blocker is still there and we want to pause.
         divBlocker.onclick = function() {
           this.pause();
         }.bind(this);
@@ -122,6 +122,8 @@ THE SOFTWARE. */
         modestbranding: 1,
         rel: 0,
         showinfo: 0,
+        origin: location.origin,
+        widget_referrer: location.origin,
         loop: this.options_.loop ? 1 : 0
       };
 
@@ -151,7 +153,7 @@ THE SOFTWARE. */
       }
 
       if (!playerVars.controls) {
-        // Let video.js handle the fullscreen unless it is the YouTube native controls
+        // Let video.js handle the fullscreen unless it is the YouTube native controls.
         playerVars.fs = 0;
       } else if (typeof this.options_.fs !== 'undefined') {
         playerVars.fs = this.options_.fs;
@@ -395,7 +397,7 @@ THE SOFTWARE. */
 
     poster: function() {
       // You can't start programmaticlly a video with a mobile
-      // through the iframe so we hide the poster and the play button (with CSS)
+      // through the iframe, so we hide the poster and the play button (with CSS).
       if (_isOnMobile) {
         return null;
       }
@@ -519,7 +521,7 @@ THE SOFTWARE. */
       this.isSeeking = true;
 
       // A seek event during pause does not return an event to trigger a seeked event,
-      // so run an interval timer to look for the currentTime to change
+      // so run an interval timer to look for the currentTime to change.
       if (this.lastState === YT.PlayerState.PAUSED && this.timeBeforeSeek !== seconds) {
         clearInterval(this.checkSeekedInPauseInterval);
         this.checkSeekedInPauseInterval = setInterval(function() {
@@ -666,7 +668,7 @@ THE SOFTWARE. */
              document.msFullscreenEnabled;
     },
 
-    // Tries to get the highest resolution thumbnail available for the video
+    // Try to get the highest resolution thumbnail available for the video.
     checkHighResPoster: function(){
       var uri = 'https://img.youtube.com/vi/' + this.url.videoId + '/maxresdefault.jpg';
 
@@ -741,8 +743,8 @@ THE SOFTWARE. */
     var tag = document.createElement('script');
     var firstScriptTag = document.getElementsByTagName('script')[0];
     if (!firstScriptTag) {
-      // when loaded in jest without jsdom setup it doesn't get any element.
-      // In jest it doesn't really make sense to do anything, because no one is watching youtube in jest
+      // When loaded in jest without jsdom setup, it doesn't get any element.
+      // In jest, it doesn't really make sense to do anything, because no one is watching youtube in jest.
       return;
     }
     firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);
@@ -789,7 +791,7 @@ THE SOFTWARE. */
     injectCss();
   }
 
-  // Older versions of VJS5 doesn't have the registerTech function
+  // Older versions of VJS5 don't have the registerTech function.
   if (typeof videojs.registerTech !== 'undefined') {
     videojs.registerTech('Youtube', Youtube);
   } else {
