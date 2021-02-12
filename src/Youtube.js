@@ -280,6 +280,19 @@ THE SOFTWARE. */
       this.trigger('ratechange');
     },
 
+    //  ------------------------------------------------------------------------
+    //  This routine listens to the real YouTube player, which runs inside an
+    //  IFrame, and dispatches events to the HTML5 player that called it into
+    //  being. We care about just 3 events: Play, Pause, and Ended.
+    //
+    //  The Youtube.PlayerShell object holds a reference to the DOM element that
+    //  exposes the events for which our custom player registered a callback
+    //  (listener). The Youtube constructor uses a minimum-delay setTimeout to
+    //  defer execution of the anonymous function that defines and initializes
+    //  the Youtube.PlayerShell object until such time as the element has been
+    //  reconstructed by the VJS player object that called it into existence.
+    //  ------------------------------------------------------------------------
+
     onPlayerStateChange: function(e) {
       var state = e.data;
 
@@ -298,6 +311,7 @@ THE SOFTWARE. */
           break;
 
         case YT.PlayerState.ENDED:
+          Youtube.PlayerShell.dispatchEvent ( new Event ( 'ended' ) );
           this.trigger('ended');
           break;
 
@@ -305,6 +319,12 @@ THE SOFTWARE. */
           this.trigger('timeupdate');
           this.trigger('durationchange');
           this.trigger('playing');
+
+          //  ------------------------------------------------------------------
+          //  Defer dispatching our event until the time and duration update.
+          //  ------------------------------------------------------------------
+
+          Youtube.PlayerShell.dispatchEvent ( new Event ( 'play' ) );
           this.trigger('play');
 
           if (this.isSeeking) {
@@ -314,9 +334,11 @@ THE SOFTWARE. */
 
         case YT.PlayerState.PAUSED:
           this.trigger('canplay');
+
           if (this.isSeeking) {
             this.onSeeked();
           } else {
+            Youtube.PlayerShell.dispatchEvent ( new Event ( 'pause' ) );
             this.trigger('pause');
           }
           break;
@@ -725,6 +747,27 @@ THE SOFTWARE. */
 
     return result;
   };
+
+  //  --------------------------------------------------------------------------
+  //  Use a minimum-delay setTimeout to defer defining and initializing the
+  //  Youtube.PlayerShell object, a JS object reference to the top level DOM
+  //  element that holds references to the three event listeners (Play, Pause,
+  //  and Ended) that we need to track.
+  //  --------------------------------------------------------------------------
+
+  setTimeout ( function ( )
+  {
+    var _domColl  = window.document.getElementsByClassName ( 'video-js' );
+
+	  if ( _domColl.length > 0 )
+	  { // Trust, but verify that the one and only element that matches CSS selector video-js exists.
+      Youtube.PlayerShell = _domColl [ 0 ];
+	  }	// TRUE (anticipated outcome) block, iif ( _domColl.length > 0 )
+	  else
+	  { // In the unlikely event that no element matching CSS selector video-js was found, log an error. ToDo: Can we make this reporting more robust, perhaps by way of another callback?
+		  console.error ( 'The deferred method that registers the VJS event listeners cannot find the element with CSS selector ID video-js.' );
+	  }	// FALSE (unanticipated outcome) block, if ( _domColl.length > 0 )
+  })
 
   function apiLoaded() {
     YT.ready(function() {

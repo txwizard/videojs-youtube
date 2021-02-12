@@ -45,8 +45,8 @@ THE SOFTWARE. */
       this.setPoster(options.poster);
       this.setSrc(this.options_.source, true);
 
-      // Set the vjs-youtube class to the player.
-      // Parent is not set yet so we have to wait a tick.
+      // Set the vjs-youtube class to the player
+      // Parent is not set yet so we have to wait a tick
       this.setTimeout(function() {
         if (this.el_) {
           this.el_.parentNode.className += ' vjs-youtube';
@@ -66,7 +66,7 @@ THE SOFTWARE. */
 
     dispose: function() {
       if (this.ytPlayer) {
-        //Dispose of the YouTube Player.
+        //Dispose of the YouTube Player
         if (this.ytPlayer.stopVideo) {
           this.ytPlayer.stopVideo();
         }
@@ -74,7 +74,7 @@ THE SOFTWARE. */
           this.ytPlayer.destroy();
         }
       } else {
-        //YouTube API hasn't finished loading or the player is already disposed.
+        //YouTube API hasn't finished loading or the player is already disposed
         var index = Youtube.apiReadyQueue.indexOf(this);
         if (index !== -1) {
           Youtube.apiReadyQueue.splice(index, 1);
@@ -87,7 +87,7 @@ THE SOFTWARE. */
         .replace(' vjs-youtube-mobile', '');
       this.el_.parentNode.removeChild(this.el_);
 
-      // This needs to be called after the YouTube player is destroyed, otherwise there will be a null reference exception.
+      //Needs to be called after the YouTube player is destroyed, otherwise there will be a null reference exception
       Tech.prototype.dispose.call(this);
     },
 
@@ -105,7 +105,7 @@ THE SOFTWARE. */
         divBlocker.setAttribute('class', 'vjs-iframe-blocker');
         divBlocker.setAttribute('style', 'position:absolute;top:0;left:0;width:100%;height:100%');
 
-        // In case the blocker is still there and we want to pause.
+        // In case the blocker is still there and we want to pause
         divBlocker.onclick = function() {
           this.pause();
         }.bind(this);
@@ -122,8 +122,6 @@ THE SOFTWARE. */
         modestbranding: 1,
         rel: 0,
         showinfo: 0,
-        origin: location.origin,
-        widget_referrer: location.origin,
         loop: this.options_.loop ? 1 : 0
       };
 
@@ -153,7 +151,7 @@ THE SOFTWARE. */
       }
 
       if (!playerVars.controls) {
-        // Let video.js handle the fullscreen unless it is the YouTube native controls.
+        // Let video.js handle the fullscreen unless it is the YouTube native controls
         playerVars.fs = 0;
       } else if (typeof this.options_.fs !== 'undefined') {
         playerVars.fs = this.options_.fs;
@@ -282,6 +280,19 @@ THE SOFTWARE. */
       this.trigger('ratechange');
     },
 
+    //  ------------------------------------------------------------------------
+    //  This routine listens to the real YouTube player, which runs inside an
+    //  IFrame, and dispatches events to the HTML5 player that called it into
+    //  being. We care about just 3 events: Play, Pause, and Ended.
+    //
+    //  The Youtube.PlayerShell object holds a reference to the DOM element that
+    //  exposes the events for which our custom player registered a callback
+    //  (listener). The Youtube constructor uses a minimum-delay setTimeout to
+    //  defer execution of the anonymous function that defines and initializes
+    //  the Youtube.PlayerShell object until such time as the element has been
+    //  reconstructed by the VJS player object that called it into existence.
+    //  ------------------------------------------------------------------------
+
     onPlayerStateChange: function(e) {
       var state = e.data;
 
@@ -300,6 +311,7 @@ THE SOFTWARE. */
           break;
 
         case YT.PlayerState.ENDED:
+          Youtube.PlayerShell.dispatchEvent ( new Event ( 'ended' ) );
           this.trigger('ended');
           break;
 
@@ -307,6 +319,12 @@ THE SOFTWARE. */
           this.trigger('timeupdate');
           this.trigger('durationchange');
           this.trigger('playing');
+
+          //  ------------------------------------------------------------------
+          //  Defer dispatching our event until the time and duration update.
+          //  ------------------------------------------------------------------
+
+          Youtube.PlayerShell.dispatchEvent ( new Event ( 'play' ) );
           this.trigger('play');
 
           if (this.isSeeking) {
@@ -316,9 +334,11 @@ THE SOFTWARE. */
 
         case YT.PlayerState.PAUSED:
           this.trigger('canplay');
+
           if (this.isSeeking) {
             this.onSeeked();
           } else {
+            Youtube.PlayerShell.dispatchEvent ( new Event ( 'pause' ) );
             this.trigger('pause');
           }
           break;
@@ -397,7 +417,7 @@ THE SOFTWARE. */
 
     poster: function() {
       // You can't start programmaticlly a video with a mobile
-      // through the iframe, so we hide the poster and the play button (with CSS).
+      // through the iframe so we hide the poster and the play button (with CSS)
       if (_isOnMobile) {
         return null;
       }
@@ -521,7 +541,7 @@ THE SOFTWARE. */
       this.isSeeking = true;
 
       // A seek event during pause does not return an event to trigger a seeked event,
-      // so run an interval timer to look for the currentTime to change.
+      // so run an interval timer to look for the currentTime to change
       if (this.lastState === YT.PlayerState.PAUSED && this.timeBeforeSeek !== seconds) {
         clearInterval(this.checkSeekedInPauseInterval);
         this.checkSeekedInPauseInterval = setInterval(function() {
@@ -668,7 +688,7 @@ THE SOFTWARE. */
              document.msFullscreenEnabled;
     },
 
-    // Try to get the highest resolution thumbnail available for the video.
+    // Tries to get the highest resolution thumbnail available for the video
     checkHighResPoster: function(){
       var uri = 'https://img.youtube.com/vi/' + this.url.videoId + '/maxresdefault.jpg';
 
@@ -728,6 +748,27 @@ THE SOFTWARE. */
     return result;
   };
 
+  //  --------------------------------------------------------------------------
+  //  Use a minimum-delay setTimeout to defer defining and initializing the
+  //  Youtube.PlayerShell object, a JS object reference to the top level DOM
+  //  element that holds references to the three event listeners (Play, Pause,
+  //  and Ended) that we need to track.
+  //  --------------------------------------------------------------------------
+
+  setTimeout ( function ( )
+  {
+    var _domColl  = window.document.getElementsByClassName ( 'video-js' );
+
+	  if ( _domColl.length > 0 )
+	  { // Trust, but verify that the one and only element that matches CSS selector video-js exists.
+      Youtube.PlayerShell = _domColl [ 0 ];
+	  }	// TRUE (anticipated outcome) block, iif ( _domColl.length > 0 )
+	  else
+	  { // In the unlikely event that no element matching CSS selector video-js was found, log an error. ToDo: Can we make this reporting more robust, perhaps by way of another callback?
+		  console.error ( 'The deferred method that registers the VJS event listeners cannot find the element with CSS selector ID video-js.' );
+	  }	// FALSE (unanticipated outcome) block, if ( _domColl.length > 0 )
+  })
+
   function apiLoaded() {
     YT.ready(function() {
       Youtube.isApiReady = true;
@@ -743,8 +784,8 @@ THE SOFTWARE. */
     var tag = document.createElement('script');
     var firstScriptTag = document.getElementsByTagName('script')[0];
     if (!firstScriptTag) {
-      // When loaded in jest without jsdom setup, it doesn't get any element.
-      // In jest, it doesn't really make sense to do anything, because no one is watching youtube in jest.
+      // when loaded in jest without jsdom setup it doesn't get any element.
+      // In jest it doesn't really make sense to do anything, because no one is watching youtube in jest
       return;
     }
     firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);
@@ -791,7 +832,7 @@ THE SOFTWARE. */
     injectCss();
   }
 
-  // Older versions of VJS5 don't have the registerTech function.
+  // Older versions of VJS5 doesn't have the registerTech function
   if (typeof videojs.registerTech !== 'undefined') {
     videojs.registerTech('Youtube', Youtube);
   } else {
